@@ -15,6 +15,7 @@ Features:
         1) From within lab articles
         2) Citations from article + Articles citing current one
         2) Extended literature
+    - Highlight by Author
 
 Backend:
     - Interactive plotting done in:
@@ -27,4 +28,6 @@ Backend:
         - Heroku
     - Storage (for lab and extended lit scraped articles):
         - Amazon S3
+    - Periodic updates:
+        - Airflow
 
