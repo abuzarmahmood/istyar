@@ -31,3 +31,36 @@ Backend:
     - Periodic updates:
         - Airflow
 
+Layout:
+    - Front end:
+        - Easiesnt thing would be to allow people to enter a query (restricted 
+            to authors) and simply receive a link to a figure.
+    - Data:
+        - Notes:
+            - If database for text is centralized, this will allow easier
+                development of more complex models (Hierachical Dirichlet Process
+                or Hierarchical NMF) more easily.
+    - NLP:
+        - Notes:
+            - Avoiding recalculating of embeddings/features with each addition 
+                to the database will be challenging
+            - Using TF or TFIDF by keeping count of <words per document>
+                will allow updates without recalculating i.e. we can store a
+                sparse array with word counts for documents. As more documents
+                are added, both rows (documents) and word counts (columns) can
+                be appended. If the dictionary size (total words) gets too large,
+                a max number can be instantiated and words can be replaced using
+                some relevance criteria (highest TFIDF?)
+        - Organization:
+            - Feature extraction
+                - TFIDF
+                - TF
+                ...
+                - PCA of features?
+            - Clustering/Topic Modelling
+                - LDA
+                - NMF
+                - PCA of weights?
+            - Distance calculation (Either on raw features or using topics)
+                - Cosine similarity
+                - KMEANS
