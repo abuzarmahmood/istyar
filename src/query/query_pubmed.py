@@ -6,92 +6,63 @@ import os
 from tqdm import tqdm
 import time
 import numpy as np
-#import xmltodict
+import uuid
+import sys
+from glob import glob
 
-base_dir = '/media/bigdata/projects/katz_pub_tree'
+base_dir = '/media/bigdata/projects/istyar'
+query_dir = os.path.join(base_dir, 'src','query')
+sys.path.append(query_dir)
+os.chdir(query_dir)
+from query_helper import *
+
 data_path = os.path.join(base_dir, 'data') 
-API_KEY = '244721b223855e6ed42690a047212dbbe408' 
+author_frame_path = os.path.join(data_path, 'author_frame.json')
+
+#  ___                        
+# / _ \ _   _  ___ _ __ _   _ 
+#| | | | | | |/ _ \ '__| | | |
+#| |_| | |_| |  __/ |  | |_| |
+# \__\_\\__,_|\___|_|   \__, |
+#                       |___/ 
+
+author_name = 'Pulakat, Lakshmi'
+affiliation = None
+and_str = " AND "
+
+punc = '''!()-[]{};:'"\,<>./?@#$%^&*_~'''
+ 
+# Removing punctuations in string
+# Using loop + punctuation string
+for ele in author_name:
+    if ele in punc:
+        author_name = author_name.replace(ele, "")
+
+if author_name:
+    query = f'({author_name}[Author])'
+    if affiliation:
+        query = query + and_str + f'({affiliation}[Affiliation])'
+
+author_id = str(uuid.uuid4()).split('-')[0]
+
+processed_name = author_name.lower()
+processed_name = processed_name.replace(' ', '_')
+
+author_dict = {'name' : processed_name, 'id' : author_id}
+
+if not os.path.exists(author_frame_path):
+    temp_frame = pd.DataFrame(author_dict, index = [0])
+    temp_frame.to_json(author_frame_path)
+else:
+    # Load frame, check presence of author, write out accordingly
+    temp_frame = pd.read_json(author_frame_path)
+    #if any(temp_frame['name'].str.contains(processed_name)):
+    #    raise Exception('Author name already present in database')
+    #else:
+    #    temp_frame = temp_frame.append(author_dict, ignore_index=True)
+    #    temp_frame.to_json(author_frame_path)
 
 
-def search(query):
-    Entrez.email = 'abuzarmahmood@gmail.com'
-    handle = Entrez.esearch(db='pubmed',
-                            sort='relevance',
-                            retmax='100',
-                            retmode='xml',
-                            term=query)
-    results = Entrez.read(handle)
-    return results
-
-def fetch_details(id_list):
-    ids = ','.join(id_list)
-    Entrez.email = 'abuzarmahmood@gmail.com'
-    handle = Entrez.efetch(db='pubmed',
-                           retmode='xml',
-                           id=ids, 
-                           api_key =API_KEY)
-    results = Entrez.read(handle)
-    return results
-
-def author_list_parser(author_list):
-    #wanted_attrs = ['ForeName','Initials','LastName']
-    wanted_attrs = ['ForeName','LastName']
-    #return [" ".join((x[wanted_attrs[0]], x[wanted_attrs[1]],x[wanted_attrs[2]]))\
-    return [" ".join((x[wanted_attrs[0]], x[wanted_attrs[1]]))\
-                    for x in author_list]
-
-def date_parser(date):
-    #if len(date) > 0:
-    try:
-        return date['Year']
-        #return "-".join(list(date.values()))
-    except:
-        return None
-
-
-def return_article_attrs(paper):
-    #wanted_attrs = {'MedlineCitation' :
-    #                {'Article' : ['ArticleDate','ArticleTitle',
-    #                    {'Abstract' : 'AbstractText'},
-    #                        'AuthorList']}} 
-
-    # Hardcode indexing for now
-    try:
-        #date_raw = paper['MedlineCitation']['Article']['ArticleDate']
-        date_raw = paper['MedlineCitation']['Article']\
-                                ['Journal']['JournalIssue']['PubDate']
-        date_parsed = date_parser(date_raw) 
-        title = paper['MedlineCitation']['Article']['ArticleTitle']
-        pmid = paper['MedlineCitation']['PMID']
-        article_type = paper['MedlineCitation']['Article']["PublicationTypeList"]
-        abstract = paper['MedlineCitation']['Article']['Abstract']['AbstractText']
-        author_list = paper['MedlineCitation']['Article']['AuthorList']
-        parsed_authors = author_list_parser(author_list)
-        attrs_keys = ['Date','Title','PMID',"Article_Type",
-                        'Abstract','Authors']
-
-        article_series = pd.Series(dict(zip(attrs_keys, 
-            [date_parsed,title,pmid,article_type,abstract,parsed_authors])))
-        return article_series
-    except:
-        return None
-
-def return_citation_attrs(parsed_citation):
-
-
-def citation_parser(paper):
-    try:
-        paper_pmid = str(return_article_attrs(paper)[2])
-        citations = paper['PubmedData']['ReferenceList'][0]['Reference']
-        citations_frame = pd.DataFrame(citations)
-        citations_frame['ArticleIdList'] = [x[0] for x in citations_frame['ArticleIdList']]
-        citations_frame['cited_by'] = paper_pmid
-        return citations_frame
-    except:
-        pass
-
-def pprint(x):
-    print(json.dumps(x, indent=4))
 
 #    _         _   _                
 #   / \  _   _| |_| |__   ___  _ __ 
@@ -100,25 +71,43 @@ def pprint(x):
 #/_/   \_\__,_|\__|_| |_|\___/|_|   
                                    
 
-results = search('(Katz DB[Author]) AND (Brandeis[Affiliation])')
+results = search(query)
 id_list = results['IdList']
 papers = fetch_details(id_list)
-#for i, paper in enumerate(papers['PubmedArticle']):
-#     print("{}) {}".format(i+1, 
-#         paper['MedlineCitation']['Article']['ArticleTitle']))
-
-# Pretty print the first paper in full to observe its structure
-#print(json.dumps(papers['PubmedArticle'][0], indent=4))
-
-#x = papers['PubmedArticle'][0]
 
 parsed_paper_list = [return_article_attrs(x) for x in papers['PubmedArticle']]
 parsed_paper_list = [x for num,x in enumerate(parsed_paper_list) if x is not None]
 paper_frame = pd.DataFrame(parsed_paper_list)
 paper_frame.dropna(inplace=True)
 
+# Print query and ask if this what they want 
+pretty_authors = [x[0].split()[-1] + ' et al.' for x in paper_frame['Authors']]
+paper_frame['pretty_authors'] = pretty_authors
 
-paper_frame.to_json(os.path.join(data_path,'katz_frame.json'))
+paper_frame[['Date','Title','pretty_authors']]
+
+print(' === DONE GRABBING AUTHOR ARTICLES ===')
+paper_frame.to_parquet(
+        os.path.join(data_path,f'{processed_name}_author_frame.pq'))
+
+# Check if current papers match saved ones
+data_files = glob(os.path.join(data_path, "*.pq")) 
+all_ids_frame = [pd.read_parquet(x, columns = ['PMID']) for x in tqdm(data_files)]
+all_ids_set = set()
+for this_frame in all_ids_frame:
+    #this_frame.iloc[:,0].to_list()
+    for this_val in this_frame.iloc[:,0].to_list():
+        all_ids_set.add(this_val)
+
+for this_id in paper_frame['PMID']:
+    if float(this_id) in all_ids_set:
+        print(True)
+
+
+## Save to parquet
+#basenames = [x.split('.')[0] for x in data_files]
+#for this_dat, this_name in zip(all_ids, basenames):
+#    this_dat.to_parquet(this_name+".pq")
 
 #  ____ _ _        _   _                 
 # / ___(_) |_ __ _| |_(_) ___  _ __  ___ 
@@ -131,15 +120,7 @@ citations_frame = pd.concat([citation_parser(x) for x in papers['PubmedArticle']
 citations_frame.reset_index(drop=True, inplace=True)
 citations_frame.drop_duplicates(inplace=True)
 
-#pmid = str(citations_frame.iloc[0,1])
-#handle = Entrez.efetch(db="pubmed", id=pmid, retmode = 'xml')
-#test = Entrez.read(handle)
-#test = test['PubmedArticle'][0]
-#handle.close()
-
 unique_citation_ids = [str(x) for x in citations_frame['ArticleIdList'].unique()]
-#handle = Entrez.efetch(db="pubmed", id=unique_citation_ids, retmode = 'xml')
-#results = Entrez.read(handle)['PubmedArticle']
 results = fetch_details(unique_citation_ids)['PubmedArticle']
 parsed_citations_list = [return_article_attrs(x) for x in results]
 parsed_citations_list = [x for num,x in enumerate(parsed_citations_list) if x is not None]
@@ -150,7 +131,9 @@ fin_citations_frame = citations_frame.merge(parsed_citations_frame,
                         left_on = 'ArticleIdList', right_on = 'PMID')
 fin_citations_frame.drop(columns = 'ArticleIdList',inplace=True)
 
-fin_citations_frame.to_json(os.path.join(data_path,'katz_citations_frame.json'))
+print(' === DONE GRABBING CITATIONS ===')
+fin_citations_frame.to_parquet(
+        os.path.join(data_path,f'{processed_name}_citations_frame.pq'))
 
 # ____  _           _ _            
 #/ ___|(_)_ __ ___ (_) | __ _ _ __ 
@@ -159,26 +142,33 @@ fin_citations_frame.to_json(os.path.join(data_path,'katz_citations_frame.json'))
 #|____/|_|_| |_| |_|_|_|\__,_|_|   
 #                                  
 
-#from joblib import Parallel, delayed, cpu_count
-def parallelize(func, iterator):
-    return Parallel(n_jobs = 3)\
-            (delayed(func)(this_iter) for this_iter in tqdm(iterator))
-
 def get_similar_frame(pmid):
-    #time.sleep(np.random.random()*2)
-    record = Entrez.read(Entrez.elink(dbfrom='pubmed', id = pmid, api_key = API_KEY))
-    similar_ids = [x['Id'] for x in record[0]["LinkSetDb"][0]["Link"]]
-    similar_papers = fetch_details(similar_ids)['PubmedArticle']
-    similar_papers_list = [return_article_attrs(x) for x in similar_papers]
-    similar_papers_list = [x for num,x in enumerate(similar_papers_list) if x is not None]
-    similar_papers_frame = pd.DataFrame(similar_papers_list)
-    return similar_papers_frame
+    try:
+        #time.sleep(np.random.random()*2)
+        record = Entrez.read(Entrez.elink(dbfrom='pubmed', id = pmid))
+        similar_ids = [x['Id'] for x in record[0]["LinkSetDb"][0]["Link"]]
+        similar_papers = fetch_details(similar_ids)['PubmedArticle']
+        similar_papers_list = [return_article_attrs(x) for x in similar_papers]
+        similar_papers_list = [x for num,x in enumerate(similar_papers_list) \
+                if x is not None]
+        similar_papers_frame = pd.DataFrame(similar_papers_list)
+        return similar_papers_frame
+    except:
+        print('Something went wrong...couldnt load similar article')
+        return None
 
-og_and_cite_unique_ids = list(set([*fin_citations_frame['PMID'], *paper_frame['PMID']]))
+og_and_cite_unique_ids = \
+        list(set([*fin_citations_frame['PMID'], *paper_frame['PMID']]))
 og_and_cite_unique_ids = [str(x) for x in og_and_cite_unique_ids]
+
 fin_similar_list = [get_similar_frame(x) for x in tqdm(og_and_cite_unique_ids)] 
+fin_similar_list = [x for x in fin_similar_frame if x is not None]
+
 for unique_id, frame in zip(og_and_cite_unique_ids, fin_similar_list):
     frame['similar_to'] = unique_id
 #fin_similar_list = parallelize(get_similar_frame, og_and_cite_unique_ids) 
 fin_similar_frame = pd.concat(fin_similar_list).reset_index(drop=True)
-fin_similar_frame.to_json(os.path.join(data_path,'katz_similar_frame.json'))
+
+print(' === DONE GRABBING SIMILAR ARTICLES ===')
+fin_similar_frame.to_parquet(
+        os.path.join(data_path,f'{processed_name}_similar_frame.pq'))
