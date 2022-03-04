@@ -1,3 +1,13 @@
+_____  _____ _________     __      _____  
+ |_   _|/ ____|__   __\ \   / //\   |  __ \ 
+   | | | (___    | |   \ \_/ //  \  | |__) |
+   | |  \___ \   | |    \   // /\ \ |  _  / 
+  _| |_ ____) |  | |     | |/ ____ \| | \ \ 
+ |_____|_____/   |_|     |_/_/    \_\_|  \_\
+                                            
+==> Scholar
+https://www.elfdict.com/w/istyar
+
 - Visualizing the timeline of Katz Lab publication and making it easier
     to explore relationship between lab papers and extended literature
 
