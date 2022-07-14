@@ -8,6 +8,11 @@ _____  _____ _________     __      _____
 ==> Scholar
 https://www.elfdict.com/w/istyar
 
+==> Alpha versions
+https://istyar.app/grouped_articles_with_bars.html
+https://istyar.app/grouped_articles%20(1).html
+
+
 - Visualizing the timeline of Katz Lab publication and making it easier
     to explore relationship between lab papers and extended literature
 
