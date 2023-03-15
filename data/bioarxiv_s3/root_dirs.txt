@@ -1,0 +1,2 @@
+                       DIR   s3://biorxiv-src-monthly/Back_Content/
+                       DIR   s3://biorxiv-src-monthly/Current_Content/
